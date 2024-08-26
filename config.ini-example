@@ -1,0 +1,5 @@
+; Get from your Rebrickable account -> settings -> API
+api_key = ""
+
+; Get from https://rebrickable.com/api/v3/docs/ in the POST _token example using your API key, username, password
+user_token = ""
