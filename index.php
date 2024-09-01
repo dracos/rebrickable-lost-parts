@@ -1,7 +1,8 @@
+<? $title = 'Rebrickable Lost Parts bulk entry'; require 'site.inc'; ?>
 <?php
 
 $config = parse_ini_file('config.ini');
-$api = new Rebrickable($config['api_key'], $config['user_token']);
+$api = new Rebrickable($config['api_key']);
 
 $set = isset($_REQUEST['set']) ? $_REQUEST['set'] : '';
 
@@ -11,7 +12,6 @@ $set = isset($_REQUEST['set']) ? $_REQUEST['set'] : '';
 <head>
 <meta charset="utf-8">
 <style>
-body { font-family: sans-serif; line-height: 1.3; padding: 1em; max-width: 48em; margin: 0 auto; }
 main img { max-width: 4em; }
 main input[type=checkbox] { transform:scale(2, 2); }
 main input[type=number] { width: 4em; }
@@ -29,18 +29,25 @@ ul.results { padding: 1em 2em; border: solid 2px #f66; }
 <?php
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $result = $api->add_lost_parts($_POST['lost']);
     print '<ul class="results">';
-    foreach ($result as $r) {
-        print "<li>Marked $r->lost_quantity of $r->inv_part_id as lost";
+    if ($_POST['username'] && $_POST['password']) {
+        $success = $api->get_token($_POST['username'], $_POST['password']);
+        if ($success) {
+            $result = $api->add_lost_parts($_POST['lost']);
+            foreach ($result as $r) {
+                print "<li>Marked $r->lost_quantity of $r->inv_part_id as lost";
+            }
+            print '<li><a href="https://rebrickable.com/my/lostparts/">See your lost parts</a>';
+        } else {
+            print '<li>Incorrect username or password';
+        }
+    } else {
+        print '<li>Please provide a username and password';
     }
     print '</ul>';
-    print '<a href="https://rebrickable.com/my/lostparts/">See your lost parts</a>';
 }
 
 ?>
-
-<h1>Rebrickable Lost Parts bulk entry</h1>
 
 <p>Say you’ve been donated a box of Lego, and some manuals, which sort of make up some sets but probably none complete.
 Before donating them onwards, you’d like to sort them out and complete them if possible, perhaps buying any missing parts.
@@ -100,7 +107,15 @@ foreach ($parts as $result) {
 <?php } ?>
 </table>
 
-<p align=center><input style="font-size: 400%" type="submit" value="SUBMIT">
+<p>To authenticate this request with your Rebrickable account, you need to
+supply your Rebrickable username and password, they do not provide another way
+to authenticate, such as OAuth. I do not store this data in any way, but it is
+up to you &ndash; you can <a href="https://github.com/dracos/rebrickable-lost-parts">install and run</a> the code yourself if you have any concerns.
+
+<p><label>Rebrickable username: <input type="text" name="username" value=""></label>
+<p><label>Rebrickable password: <input type="password" name="password" value=""></label>
+
+<p><input style="font-size: 200%" type="submit" value="Submit">
 </form>
 
 <?php } ?>
@@ -114,6 +129,7 @@ function load_state() {
     var data = localStorage.getItem('state-' + set);
     if (!data) return;
     var data = new URLSearchParams(data);
+    data.delete('password');
     for (var [key, value] of data) {
         var elt = form_missing.querySelector('input[name="' + key + '"]');
         if (elt) {
@@ -126,7 +142,9 @@ function load_state() {
     }
 }
 function save_state() {
-    var data = new URLSearchParams(new FormData(form_missing)).toString();
+    var data = new URLSearchParams(new FormData(form_missing));
+    data.delete('password');
+    data = data.toString();
     var set = document.querySelector('input[name=set]').defaultValue;
     localStorage.setItem('state-' + set, data);
 }
@@ -158,9 +176,8 @@ class Rebrickable {
     private $token;
     private $api_key;
 
-    public function __construct($api_key, $token) {
+    public function __construct($api_key) {
         $this->api_key = $api_key;
-        $this->token = $token;
     }
 
     public function get($url, $params) {
@@ -180,6 +197,24 @@ class Rebrickable {
         return $out;
     }
 
+    public function get_token($username, $password) {
+        $url = "https://rebrickable.com/api/v3/users/_token/?key=" . $this->api_key;
+        $data = http_build_query([ 'username' => $username, 'password' => $password ]);
+        $context = stream_context_create(array('http' => array(
+            'method'  => 'POST',
+            'header'  => 'Content-Type: application/x-www-form-urlencoded',
+            'content' => $data,
+        )));
+        $result = file_get_contents($url, false, $context);
+        $result = json_decode($result);
+
+        if (property_exists($result, 'user_token')) {
+            $this->token = $result->user_token;
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     private function post_api($url, $data) {
         $url = "https://rebrickable.com/api/v3/users/" . $this->token . "/$url?key=" . $this->api_key;
@@ -206,3 +241,4 @@ class Rebrickable {
     }
 }
 
+footer();

@@ -14,8 +14,9 @@ part, click on Lost Parts, enter number, click save, close part, repeat).
 So I made this, which will add multiple things to your Lost Parts at once,
 remember where you’ve got to, and make the process a lot smoother.
 
-I don’t want you to give me your Rebrickable username/password, so it’s only
-self-install at present, I’m afraid.
+There is an online version at https://dracos.co.uk/made/rebrickable-lost-parts/
+but if you do not want to provie your Rebrickable username/password, you can
+install this code yourself.
 
 ## Installation
 
